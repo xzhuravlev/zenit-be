@@ -46,7 +46,7 @@ export class UsersService {
         }
 
         return this.database.user.update({
-            where: {id: userId},
+            where: { id: userId },
             data: dataToUpdate,
             select: {
                 id: true,
@@ -56,4 +56,25 @@ export class UsersService {
             }
         })
     }
+
+    async verifyUser(userId: number) {
+        const user = await this.database.user.findUnique({
+            where: { id: userId },
+            select: { verified: true },
+        });
+
+        if (!user) throw new NotFoundException('User not found');
+
+        return this.database.user.update({
+            where: { id: userId },
+            data: {
+                verified: !user.verified,
+            },
+            select: {
+                id: true,
+                verified: true,
+            }
+        });
+    }
+
 }

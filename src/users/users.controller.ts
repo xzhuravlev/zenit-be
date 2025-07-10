@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Patch, UseGuards, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, UseGuards, ValidationPipe } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { JwtGuard, ModeratorGuard } from 'src/auth/guard';
+import { AdminGuard, JwtGuard, ModeratorGuard } from 'src/auth/guard';
 import { EditUserDto } from './dto';
 import { GetUser } from './decorator';
 
@@ -19,5 +19,11 @@ export class UsersController {
     @Patch('edit')
     editUser(@GetUser('id') userId: number, @Body(ValidationPipe) dto: EditUserDto){
         return this.usersService.editUser(userId, dto);
+    }
+
+    @Patch('verify/:userId')
+    @UseGuards(AdminGuard)
+    verifyUser(@Param('userId') userId: number){
+        return this.usersService.verifyUser(Number(userId));
     }
 }
