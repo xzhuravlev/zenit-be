@@ -32,15 +32,15 @@ export class AuthService {
             const tokens = await this.generateTokens(user.id, user.email);
 
             return { access_token: tokens.access_token, refresh_token: tokens.refresh_token };
-        } catch(error) {
-            if(error instanceof PrismaClientKnownRequestError){
-                if(error.code === 'P2002'){
+        } catch (error) {
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code === 'P2002') {
                     const target = error.meta?.target as string[];
-                    if(target)
+                    if (target)
                         console.log(target)
-                    if(target && target.includes('email'))
+                    if (target && target.includes('email'))
                         throw new ForbiddenException('Email is already taken');
-                    if(target && target.includes('username'))
+                    if (target && target.includes('username'))
                         throw new ForbiddenException('Username is already taken');
                     throw new ForbiddenException('Credentials taken');
                 }
@@ -51,13 +51,13 @@ export class AuthService {
 
     async signIn(dto: SignInDto): Promise<any> {
         const user = await this.database.user.findUnique({
-            where: {email: dto.email},
+            where: { email: dto.email },
         });
 
         if (!user) throw new ForbiddenException('Credentials incorrect')
-        
+
         const passwordsMatches = await argon.verify(user.hash, dto.password);
-        
+
         if (!passwordsMatches) throw new ForbiddenException('Credentials incorrect');
 
         const tokens = await this.generateTokens(user.id, user.email);
@@ -76,6 +76,24 @@ export class AuthService {
         return { access_token: accessToken.signed_token, refresh_token: refreshToken.signed_token };
     }
 
+    async refreshTokens(refreshToken: string): Promise<{ access_token: string, refresh_token: string }> {
+        try {
+            const payload = await this.jwtService.verifyAsync(refreshToken, {
+                secret: this.config.get('JWT_SECRET'),
+            });
+
+            const user = await this.database.user.findUnique({ where: { id: payload.sub } });
+            if (!user) throw new ForbiddenException('User not found');
+
+            // Если ты хранишь refreshToken в БД (опционально), проверь его тут
+
+            return this.generateTokens(user.id, user.email);
+        } catch {
+            throw new ForbiddenException('Invalid refresh token');
+        }
+    }
+
+
     // private async saveRefreshToken(userId: number, refreshToken: string) {
     //     const hashedRefreshToken = await argon.hash(refreshToken);
     //     await this.database.user.update({
@@ -84,7 +102,7 @@ export class AuthService {
     //     });
     // }
 
-    private async signToken(userId: number, email: string, expiresIn: string): Promise<{signed_token: string}> {
+    private async signToken(userId: number, email: string, expiresIn: string): Promise<{ signed_token: string }> {
         const payload = {
             sub: userId,
             email
