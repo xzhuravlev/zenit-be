@@ -1,15 +1,15 @@
-import { 
-    Body, 
-    Controller, 
-    HttpCode, 
-    HttpStatus, 
-    Post, 
-    ValidationPipe, 
-    Get, 
-    UseGuards, 
-    Res, 
-    Req, 
-    UnauthorizedException 
+import {
+    Body,
+    Controller,
+    HttpCode,
+    HttpStatus,
+    Post,
+    ValidationPipe,
+    Get,
+    UseGuards,
+    Res,
+    Req,
+    UnauthorizedException
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignInDto, SignUpDto } from './dto';
@@ -17,6 +17,7 @@ import { JwtGuard, ModeratorGuard } from './guard';
 import { AdminGuard } from './guard/admin.guard';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
+import { GetUser } from 'src/users/decorator';
 
 
 @Controller('auth')
@@ -53,6 +54,17 @@ export class AuthController {
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 дней
         });
         return { access_token };
+    }
+
+    @Post('logout')
+    @UseGuards(JwtGuard)
+    async logout(
+        @GetUser('id') userId: number,
+        @Res({ passthrough: true }) res: Response
+    ) {
+        await this.authService.logout(userId);
+        res.clearCookie('refresh_token'); // удаляем куку с клиента
+        return { message: 'Logged out' };
     }
 
     @Post('refresh')

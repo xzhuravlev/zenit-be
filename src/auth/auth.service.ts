@@ -30,6 +30,7 @@ export class AuthService {
 
             // return saved user
             const tokens = await this.generateTokens(user.id, user.email);
+            await this.saveRefreshToken(user.id, tokens.refresh_token);
 
             return { access_token: tokens.access_token, refresh_token: tokens.refresh_token };
         } catch (error) {
@@ -53,16 +54,21 @@ export class AuthService {
         const user = await this.database.user.findUnique({
             where: { email: dto.email },
         });
-
         if (!user) throw new ForbiddenException('Credentials incorrect')
 
         const passwordsMatches = await argon.verify(user.hash, dto.password);
-
         if (!passwordsMatches) throw new ForbiddenException('Credentials incorrect');
 
         const tokens = await this.generateTokens(user.id, user.email);
-
+        await this.saveRefreshToken(user.id, tokens.refresh_token);
         return { access_token: tokens.access_token, refresh_token: tokens.refresh_token };
+    }
+
+    async logout(userId: number): Promise<void> {
+        await this.database.user.update({
+            where: { id: userId },
+            data: { refreshToken: null },
+        });
     }
 
     private async generateTokens(userId: number, email: string) {
@@ -82,25 +88,31 @@ export class AuthService {
                 secret: this.config.get('JWT_SECRET'),
             });
 
-            const user = await this.database.user.findUnique({ where: { id: payload.sub } });
-            if (!user) throw new ForbiddenException('User not found');
+            const user = await this.database.user.findUnique({
+                where: { id: payload.sub }
+            });
+            if (!user || !user.refreshToken) throw new ForbiddenException('Access denied');
 
-            // Если ты хранишь refreshToken в БД (опционально), проверь его тут
+            const isValid = await argon.verify(user.refreshToken, refreshToken);
+            if (!isValid) throw new ForbiddenException('Invalid refresh token');
 
-            return this.generateTokens(user.id, user.email);
+            const tokens = await this.generateTokens(user.id, user.email);
+            await this.saveRefreshToken(user.id, tokens.refresh_token);
+            return tokens;
+
         } catch {
             throw new ForbiddenException('Invalid refresh token');
         }
     }
 
 
-    // private async saveRefreshToken(userId: number, refreshToken: string) {
-    //     const hashedRefreshToken = await argon.hash(refreshToken);
-    //     await this.database.user.update({
-    //         where: { id: userId },
-    //         data: { refreshToken: hashedRefreshToken },
-    //     });
-    // }
+    private async saveRefreshToken(userId: number, refreshToken: string) {
+        const hashedRefreshToken = await argon.hash(refreshToken);
+        await this.database.user.update({
+            where: { id: userId },
+            data: { refreshToken: hashedRefreshToken },
+        });
+    }
 
     private async signToken(userId: number, email: string, expiresIn: string): Promise<{ signed_token: string }> {
         const payload = {
