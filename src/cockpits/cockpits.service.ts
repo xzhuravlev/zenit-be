@@ -1,7 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { CockpitCreateDto, CockpitUpdateDto, CockpitFilterDto } from './dto';
 import { DatabaseService } from 'src/database/database.service';
-import { link } from 'fs';
 
 @Injectable()
 export class CockpitsService {
