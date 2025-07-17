@@ -124,8 +124,12 @@ export class CockpitsService {
                 },
                 checklists: {
                     include: {
-                        items: true
-                    }
+                        items: {
+                            orderBy: {
+                                id: 'asc',
+                            },
+                        },
+                    },
                 },
                 media: true,
             },
