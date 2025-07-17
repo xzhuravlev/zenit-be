@@ -28,8 +28,10 @@ model User {
     createdAt    DateTime @default(now())
     updatedAt    DateTime @updatedAt
 
-    createdCockpits  Cockpit[]
-    favoriteCockpits Cockpit[] @relation("FavoriteCockpits")
+    // relations:
+    createdCockpits      Cockpit[]
+    favoriteCockpits     Cockpit[]           @relation("FavoriteCockpits")
+    checklistsProgresses ChecklistProgress[]
 
     @@map("users")
 }
@@ -49,9 +51,92 @@ model Cockpit {
     createdAt    DateTime @default(now())
     updatedAt    DateTime @updatedAt
 
+    // relations:
     creatorId   Int
-    creator     User   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-    favoritedBy User[] @relation("FavoriteCockpits")
+    creator     User         @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+    favoritedBy User[]       @relation("FavoriteCockpits")
+    instruments Instrument[]
+    checklists  Checklist[]
+    media       Media[]
 
     @@map("cockpits")
+}
+
+model Instrument {
+    id   Int    @id @default(autoincrement())
+    name String
+    x    Int?
+    y    Int?
+
+    // relations:
+    cockpitId      Int
+    cockpit        Cockpit         @relation(fields: [cockpitId], references: [id], onDelete: Cascade)
+    checklistItems ChecklistItem[]
+    media          Media[]
+
+    @@map("instruments")
+}
+
+model Media {
+    id     Int       @id @default(autoincrement())
+    link   String
+    type   MediaType
+    width  Int?
+    height Int?
+
+    // relations:
+    cockpitId    Int?
+    cockpit      Cockpit?    @relation(fields: [cockpitId], references: [id], onDelete: Cascade)
+    instrumentId Int?
+    instrument   Instrument? @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+
+    @@map("media")
+}
+
+enum MediaType {
+    PHOTO
+    TEXT
+    PANORAMA
+}
+
+model Checklist {
+    id        Int      @id @default(autoincrement())
+    name      String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    // relations:
+    cockpitId  Int
+    cockpit    Cockpit             @relation(fields: [cockpitId], references: [id], onDelete: Cascade)
+    items      ChecklistItem[]
+    progresses ChecklistProgress[]
+
+    @@map("checklists")
+}
+
+model ChecklistItem {
+    id    Int @id @default(autoincrement())
+    order Int
+
+    // relations:
+    checklistId  Int
+    checklist    Checklist  @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+    instrumentId Int
+    instrument   Instrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+
+    @@map("checklist_items")
+}
+
+model ChecklistProgress {
+    id      Int @id @default(autoincrement())
+    percent Int
+    attempt Int
+
+    // relations:
+    userId      Int
+    user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    checklistId Int
+    checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+    @@map("checklist_progresses")
 }

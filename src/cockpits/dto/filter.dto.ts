@@ -21,7 +21,7 @@ export class CockpitFilterDto {
     @IsOptional()
     @IsString()
     @IsIn(['true'])
-    hasChecklist?: string;
+    hasChecklists?: string;
 
     @IsOptional()
     @IsIn(['old', 'new'])
