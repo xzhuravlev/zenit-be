@@ -1,6 +1,6 @@
 import { MediaType } from "@prisma/client";
 import { Type } from "class-transformer";
-import { IsArray, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateIf, ValidateNested } from "class-validator"
+import { IsArray, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator"
 
 class InstrumentCreateDto{
 
@@ -31,17 +31,14 @@ class MediaCreateDto{
 
     @IsString()
     @IsEnum(MediaType)
-    @IsNotEmpty()
     type: MediaType;
 
     @IsNumber()
     @IsOptional()
-    @ValidateIf(o => o.type !== MediaType.TEXT)
     width?: number;
 
     @IsNumber()
     @IsOptional()
-    @ValidateIf(o => o.type !== MediaType.TEXT)
     height?: number;
 }
 
@@ -50,10 +47,6 @@ class ChecklistItemCreateDto{
     @IsNumber()
     @IsNotEmpty()
     order: number;
-
-    @IsString()
-    @IsOptional()
-    description?: string
 
     @IsNumber()
     @IsNotEmpty()
@@ -73,11 +66,11 @@ class ChecklistCreateDto{
     items: ChecklistItemCreateDto[];
 }
 
-export class CockpitCreateDto{
+export class CockpitEditDto{
 
     @IsString()
-    @IsNotEmpty()
-    name: string
+    @IsOptional()
+    name?: string
 
     @IsString()
     @IsOptional()
@@ -103,9 +96,8 @@ export class CockpitCreateDto{
     @Type(() => MediaCreateDto)
     media?: MediaCreateDto[];
 
-    @IsArray()
     @IsOptional()
-    @ValidateNested({ each: true })
+    @ValidateNested()
     @Type(() => ChecklistCreateDto)
-    checklists?: ChecklistCreateDto[];
+    checklist?: ChecklistCreateDto;
 }

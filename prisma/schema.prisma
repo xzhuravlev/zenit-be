@@ -115,8 +115,9 @@ model Checklist {
 }
 
 model ChecklistItem {
-    id    Int @id @default(autoincrement())
-    order Int
+    id          Int    @id @default(autoincrement())
+    description String?
+    order       Int
 
     // relations:
     checklistId  Int
