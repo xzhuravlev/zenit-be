@@ -177,7 +177,7 @@ export class CockpitsService {
                 const itemsToCreate = checklist.items.map(item => {
                     const instrument = cockpit.instruments[item.instrumentIndex];
                     if (!instrument) {
-                        throw new Error(`Instrument with index ${item.instrumentIndex} doesn't found.`);
+                        throw new Error(`Instrument with index ${item.instrumentIndex} not found`);
                     }
                     return {
                         description: item.description ? item.description : null,
@@ -319,204 +319,20 @@ export class CockpitsService {
         return updated;
     }
 
-
-    /*
-    async create(dto: CockpitCreateDto, userId: number) {
-        const cockpit = await this.database.cockpit.create({
-            data: {
-                name: dto.name,
-                manufacturer: dto.manufacturer,
-                model: dto.model,
-                type: dto.type,
-                creatorId: userId,
-    
-                media: dto.media ? {
-                    create: dto.media.map((media) => ({
-                        link: media.link,
-                        type: media.type,
-                        width: media.width ? media.width : null, // ✅ Добавляем ширину
-                        height: media.height ? media.height : null, // ✅ Добавляем высоту
-                    })),
-                } : undefined,
-                
-                instruments: dto.instruments ? {
-                    create: dto.instruments.map((instrument) => ({
-                        name: instrument.name,
-                        x: instrument.x,
-                        y: instrument.y,
-    
-                        media: instrument.media ? {
-                            create: instrument.media.map((media) => ({
-                                link: media.link,
-                                type: media.type,
-                                width: media.width ? media.width : null, // ✅ Размеры для инструмента
-                                height: media.height ? media.height : null,
-                            })),
-                        } : undefined,
-                    })),
-                } : undefined,
-            },
-            include: {
-                instruments: true,
-            },
-        });
-
-        // ✅ Если передан чеклист, создаём его с элементами
-        if (dto.checklist && dto.checklist.items.length > 0) {
-            // Преобразуем каждый элемент, используя instrumentIndex для подключения к созданному инструменту.
-            const checklistItemsData = dto.checklist.items.map(item => {
-                // Найти инструмент по индексу.
-                const instrument = cockpit.instruments[item.instrumentIndex];
-                if (!instrument) {
-                    throw new Error(`Инструмент с индексом ${item.instrumentIndex} не найден.`);
-                }
-                return {
-                    order: item.order,
-                    instrument: {
-                        connect: { id: instrument.id },
-                    },
-                };
-            });
-
-            // Создаем чеклист, связанный с данным cockpit.
-            await this.database.checklist.create({
-                data: {
-                    name: dto.checklist.name,
-                    cockpitId: cockpit.id,
-                    items: {
-                        create: checklistItemsData,
-                    },
-                },
-            });
-        }
-
-        return cockpit;
-    }
-    */
-
-    /*
-    async edit(cockpitId: number, dto: CockpitEditDto, userId: number) {
-        // Находим кокпит с вложенными инструментами
+    async delete(cockpitId: number, userId: number) {
         const cockpit = await this.database.cockpit.findUnique({
-            where: { id: cockpitId },
-            include: { instruments: true },
-        });
-        
-        if(!cockpit || cockpit.creatorId !== userId)
-            throw new ForbiddenException('Access to resources denied');
-        
-        // Если переданы новые media для кокпита, удаляем старые
-        if(dto.media){
-            await this.database.media.deleteMany({
-                where: { cockpitId: cockpitId },
-            });
-        }
-        
-        // Если переданы новые инструменты, удаляем старые инструменты (и связанные с ними media, если настроено каскадное удаление)
-        if(dto.instruments){
-            // Найдём все инструменты данного кокпита
-            const instrumentsToDelete = await this.database.instrument.findMany({
-                where: { cockpitId: cockpitId },
-                select: { id: true },
-            });
-
-            const instrumentIds = instrumentsToDelete.map(i => i.id);
-            
-            // Удаляем все checklist items, ссылающиеся на эти инструменты
-            await this.database.checklistItem.deleteMany({
-                where: { instrumentId: { in: instrumentIds } },
-            });
-
-            // Удаляем медиа, связанные с этими инструментами
-            await this.database.media.deleteMany({
-                where: { instrumentId: { in: instrumentIds } },
-            });
-            
-            // Теперь можно безопасно удалить инструменты
-            await this.database.instrument.deleteMany({
-                where: { cockpitId: cockpitId },
-            });
-        }
-            
-        
-        // Обновляем основные поля кокпита, создаём новые вложенные media и instruments
-        const updatedCockpit = await this.database.cockpit.update({
-            where: { id: cockpitId },
-            data: {
-                name: dto.name,
-                manufacturer: dto.manufacturer,
-                model: dto.model,
-                type: dto.type,
-                media: dto.media ? {
-                    create: dto.media.map(media => ({
-                        link: media.link,
-                        type: media.type,
-                        width: media.width ? media.width : null, // ✅ Добавляем ширину
-                        height: media.height ? media.height : null, // ✅ Добавляем высоту
-                    })),
-                } : undefined,
-                instruments: dto.instruments ? {
-                    create: dto.instruments.map(instrument => ({
-                        name: instrument.name,
-                        x: instrument.x,
-                        y: instrument.y,
-                        media: instrument.media ? {
-                            create: instrument.media.map(media => ({
-                            link: media.link,
-                            type: media.type,
-                            width: media.width ? media.width : null, // ✅ Добавляем ширину
-                            height: media.height ? media.height : null, // ✅ Добавляем высоту
-                            })),
-                        } : undefined,
-                    })),
-                } : undefined,
+            where: {
+                id: cockpitId
             },
-            include: { instruments: true },
         });
-        
-        // Если передан чеклист, обновляем или создаём его с элементами
-        if(dto.checklist && dto.checklist.items.length > 0){
-            // Преобразуем каждый элемент чеклиста, используя instrumentIndex для подключения к созданному инструменту
-            const checklistItemsData = dto.checklist.items.map(item => {
-                const instrument = updatedCockpit.instruments[item.instrumentIndex];
-                if(!instrument){
-                    throw new Error(`Инструмент с индексом ${item.instrumentIndex} не найден.`);
-                }
-                return {
-                    order: item.order,
-                    instrument: { connect: { id: instrument.id } },
-                };
-            });
-        
-            const existingChecklist = await this.database.checklist.findUnique({
-                where: { cockpitId: cockpitId },
-            });
 
-            if(existingChecklist){
-                // Сначала удаляем все элементы чеклиста отдельно
-                await this.database.checklistItem.deleteMany({
-                    where: { checklistId: existingChecklist.id },
-                });
+        if (!cockpit || cockpit.creatorId !== userId)
+            throw new ForbiddenException('Access to resources denied')
 
-                // Затем обновляем чеклист, создавая новые элементы
-                await this.database.checklist.update({
-                    where: { id: existingChecklist.id },
-                    data: {
-                        items: { create: checklistItemsData },
-                    },
-                });
-            }else {
-                await this.database.checklist.create({
-                    data: {
-                        name: dto.checklist.name,
-                        cockpitId: cockpitId,
-                        items: { create: checklistItemsData },
-                    },
-                });
-            }
-        }
-        
-        return updatedCockpit;
+        return this.database.cockpit.delete({
+            where: {
+                id: cockpitId
+            },
+        });
     }
-    */
 }
