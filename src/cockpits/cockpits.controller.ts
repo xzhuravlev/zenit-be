@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtGuard } from 'src/auth/guard';
 import { CockpitsService } from './cockpits.service';
-import { CockpitFilterDto, CockpitCreateDto, CockpitEditDto } from './dto';
+import { CockpitFilterDto, CockpitCreateDto, CockpitUpdateDto } from './dto';
 import { GetUser } from 'src/users/decorator';
 
 @Controller('cockpits')
@@ -33,11 +33,11 @@ export class CockpitsController {
     }
 
     @Patch(':id')
-    edit(
+    update(
         @Param('id', ParseIntPipe) cockpitId: number,
-        @Body() dto: CockpitEditDto,
+        @Body() dto: CockpitUpdateDto,
         @GetUser('id') userId: number
     ) {
-        // return this.cockpitsService.edit(cockpitId, dto, userId);
+        return this.cockpitsService.update(cockpitId, dto, userId);
     }
 }

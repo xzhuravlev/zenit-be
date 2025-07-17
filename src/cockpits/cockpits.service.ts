@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { CockpitCreateDto, CockpitEditDto, CockpitFilterDto } from './dto';
+import { CockpitCreateDto, CockpitUpdateDto, CockpitFilterDto } from './dto';
 import { DatabaseService } from 'src/database/database.service';
 import { link } from 'fs';
 
@@ -150,8 +150,8 @@ export class CockpitsService {
                             create: instrument.media.map((media) => ({
                                 link: media.link,
                                 type: media.type,
-                                width: media.width ? media.width : null,
-                                height: media.height ? media.height : null,
+                                width: media.type !== 'TEXT' ? media.width ?? null : null,
+                                height: media.type !== 'TEXT' ? media.height ?? null : null,
                             })),
                         } : undefined,
                     })),
@@ -160,8 +160,8 @@ export class CockpitsService {
                     create: dto.media.map((media) => ({
                         link: media.link,
                         type: media.type,
-                        width: media.width ? media.width : null,
-                        height: media.height ? media.height : null,
+                        width: media.type !== 'TEXT' ? media.width ?? null : null,
+                        height: media.type !== 'TEXT' ? media.height ?? null : null,
                     })),
                 } : undefined,
             },
@@ -202,6 +202,123 @@ export class CockpitsService {
 
         return cockpit;
     }
+
+    async update(cockpitId: number, dto: CockpitUpdateDto, userId: number) {
+        const cockpit = await this.database.cockpit.findUnique({
+            where: { id: cockpitId },
+            include: { instruments: true },
+        });
+
+        if (!cockpit || cockpit.creatorId !== userId)
+            throw new ForbiddenException('Access to resources denied')
+
+        // if we got new media => delete old
+        if (dto.media) {
+            await this.database.media.deleteMany({
+                where: { cockpitId: cockpitId },
+            });
+        }
+
+        // if we got new instruments => delete old
+        if (dto.instruments) {
+            const instrumentsIds = cockpit.instruments.map((instrument) => instrument.id);
+
+            await this.database.checklistItem.deleteMany({
+                where: { instrumentId: { in: instrumentsIds } },
+            });
+
+            await this.database.media.deleteMany({
+                where: { instrumentId: { in: instrumentsIds } },
+            });
+
+            await this.database.instrument.deleteMany({
+                where: { cockpitId },
+            });
+        }
+
+        // if we got new checklists => delete old
+        if (dto.checklists) {
+            const existingChecklists = await this.database.checklist.findMany({
+                where: { cockpitId },
+                select: { id: true },
+            });
+
+            const checklistsIds = existingChecklists.map((checklist) => checklist.id);
+
+            await this.database.checklistItem.deleteMany({
+                where: { checklistId: { in: checklistsIds } },
+            });
+
+            await this.database.checklist.deleteMany({
+                where: { id: { in: checklistsIds } },
+            });
+        }
+
+        // update cockpit
+        const updated = await this.database.cockpit.update({
+            where: { id: cockpitId },
+            data: {
+                name: dto.name,
+                manufacturer: dto.manufacturer,
+                model: dto.model,
+                type: dto.type,
+
+                media: dto.media ? {
+                    create: dto.media.map(media => ({
+                        link: media.link,
+                        type: media.type,
+                        width: media.type !== 'TEXT' ? media.width ?? null : null,
+                        height: media.type !== 'TEXT' ? media.height ?? null : null,
+                    })),
+                } : undefined,
+
+                instruments: dto.instruments ? {
+                    create: dto.instruments.map(instr => ({
+                        name: instr.name,
+                        x: instr.x,
+                        y: instr.y,
+                        media: instr.media ? {
+                            create: instr.media.map(media => ({
+                                link: media.link,
+                                type: media.type,
+                                width: media.type !== 'TEXT' ? media.width ?? null : null,
+                                height: media.type !== 'TEXT' ? media.height ?? null : null,
+                            })),
+                        } : undefined,
+                    })),
+                } : undefined,
+            },
+            include: { instruments: true },
+        });
+
+        if (dto.checklists && dto.checklists.length > 0) {
+            for (const checklist of dto.checklists) {
+                const itemsToCreate = checklist.items.map(item => {
+                    const instrument = updated.instruments[item.instrumentIndex];
+                    if (!instrument) {
+                        throw new Error(`Instrument at index ${item.instrumentIndex} not found`);
+                    }
+
+                    return {
+                        description: item.description ?? null,
+                        order: item.order,
+                        instrument: { connect: { id: instrument.id } },
+                    };
+                });
+
+                await this.database.checklist.create({
+                    data: {
+                        name: checklist.name,
+                        cockpitId: cockpitId,
+                        items: { create: itemsToCreate },
+                    },
+                });
+            }
+        }
+
+        return updated;
+    }
+
 
     /*
     async create(dto: CockpitCreateDto, userId: number) {
@@ -275,7 +392,9 @@ export class CockpitsService {
 
         return cockpit;
     }
+    */
 
+    /*
     async edit(cockpitId: number, dto: CockpitEditDto, userId: number) {
         // Находим кокпит с вложенными инструментами
         const cockpit = await this.database.cockpit.findUnique({
