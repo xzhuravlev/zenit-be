@@ -30,7 +30,7 @@ export class AuthController {
         @Body(ValidationPipe) dto: SignUpDto,
         @Res({ passthrough: true }) res: Response
     ) {
-        const { access_token, refresh_token } = await this.authService.signIn(dto);
+        const { access_token, refresh_token } = await this.authService.signUp(dto);
         res.cookie('refresh_token', refresh_token, {
             httpOnly: true,
             secure: this.config.get('NODE_ENV') === 'production', // включи только на HTTPS
