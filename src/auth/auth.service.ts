@@ -71,9 +71,25 @@ export class AuthService {
         });
     }
 
+    async getMe(userId: number) {
+        const user = await this.database.user.findFirst({
+            where: {id: userId},
+            select: {
+                id: true,
+                username: true,
+                email: true,
+                role: true,
+                verified: true
+            }
+        })
+        if (!user)
+            throw new ForbiddenException(`User with ${userId} not found`)
+        return user
+    }
+
     private async generateTokens(userId: number, email: string) {
         const [accessToken, refreshToken] = await Promise.all([
-            this.signToken(userId, email, "45m"),
+            this.signToken(userId, email, "5m"),
             this.signToken(userId, email, "7d"),
         ]);
 

@@ -83,6 +83,12 @@ export class AuthController {
         return { access_token };
     }
 
+    @Get('me')
+    @UseGuards(JwtGuard)
+    getMe(@GetUser('id') userId: number){
+        return this.authService.getMe(userId);
+    }
+
     //
     // TEST:
     //
