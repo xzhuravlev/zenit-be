@@ -41,6 +41,14 @@ export class CockpitsController {
         return this.cockpitsService.update(cockpitId, dto, userId);
     }
 
+    @Patch(":id/favorite")
+    toggleFavorite(
+        @Param('id', ParseIntPipe) cockpitId: number,
+        @GetUser('id') userId: number
+    ) {
+        return this.cockpitsService.toggleFavorite(cockpitId, userId);
+    }
+
     @Delete(':id')
     @HttpCode(HttpStatus.NO_CONTENT)
     delete(

@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CockpitCreateDto, CockpitUpdateDto, CockpitFilterDto } from './dto';
 import { DatabaseService } from 'src/database/database.service';
 
@@ -16,6 +16,7 @@ export class CockpitsService {
                             favoritedBy: true,
                         },
                     },
+                    favoritedBy: { where: { id: userId }, select: { id: true } },
                     checklists: {
                         select: {
                             id: true,
@@ -81,6 +82,7 @@ export class CockpitsService {
                         favoritedBy: true,
                     },
                 },
+                favoritedBy: { where: { id: userId }, select: { id: true } },
                 checklists: {
                     select: {
                         id: true,
@@ -340,4 +342,38 @@ export class CockpitsService {
             },
         });
     }
+
+    async toggleFavorite(cockpitId: number, userId: number) {
+        // Проверяем, что кокпит существует
+        const exists = await this.database.cockpit.findUnique({
+          where: { id: cockpitId },
+          select: { id: true },
+        });
+        if (!exists) throw new NotFoundException('Cockpit not found');
+    
+        // Есть ли уже лайк от этого пользователя?
+        const already = await this.database.cockpit.count({
+          where: { id: cockpitId, favoritedBy: { some: { id: userId } } },
+        });
+    
+        // Переключаем связь connect/disconnect
+        const updated = await this.database.cockpit.update({
+          where: { id: cockpitId },
+          data: {
+            favoritedBy: already
+              ? { disconnect: { id: userId } }
+              : { connect: { id: userId } },
+          },
+          include: {
+            _count: { select: { favoritedBy: true } },
+          },
+        });
+    
+        return {
+          cockpitId,
+          liked: !already,                          // текущее состояние ПОСЛЕ операции
+          favoritesCount: updated._count.favoritedBy,
+        };
+      }
+
 }
