@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Query, UseGuards, ValidationPipe } from '@nestjs/common';
 import { JwtGuard } from 'src/auth/guard';
 import { CockpitsService } from './cockpits.service';
 import { CockpitFilterDto, CockpitCreateDto, CockpitUpdateDto } from './dto';
@@ -26,7 +26,7 @@ export class CockpitsController {
 
     @Post()
     create(
-        @Body() dto: CockpitCreateDto,
+        @Body(ValidationPipe) dto: CockpitCreateDto,
         @GetUser('id') userId: number
     ) {
         return this.cockpitsService.create(dto, userId);

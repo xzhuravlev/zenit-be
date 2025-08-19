@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Param, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { JwtGuard } from 'src/auth/guard';
 import { S3Service } from './s3.service';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -11,10 +11,11 @@ export class S3Controller {
 
     @Post('uploadPanorama')
     @UseInterceptors(FileInterceptor('file'))
-    uploadPanorama(
+    async uploadPanorama(
         @UploadedFile() file: Multer.File
     ) {
-        return this.s3Service.uploadPanorama(file);
+        const result = await this.s3Service.uploadPanorama(file);
+        return { url: result };
     }
 
     @Post('uploadText')
@@ -24,4 +25,11 @@ export class S3Controller {
 		const result = await this.s3Service.uploadText(body.text, body.filename);
         return { url: result };
 	}
+
+    @Delete('delete/:key')
+    async deletePanorama(
+        @Param('key') key: string
+    ) {
+        return this.s3Service.deletePanorama(`panoramas/${key}`);
+    }
 }

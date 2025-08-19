@@ -1,4 +1,4 @@
-import { S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -106,4 +106,21 @@ export class S3Service {
 			throw new InternalServerErrorException('Ошибка при загрузке текста');
 		}
 	}
+
+    async deletePanorama(key: string) {
+        try {
+			const command = new DeleteObjectCommand({
+				Bucket: this.bucketName,
+				Key: key,
+			});
+
+			await this.s3.send(command);
+			console.log(`Файл удалён: ${key}`);
+
+			return { message: `Файл ${key} успешно удалён из S3` };
+		} catch (error) {
+			console.error('Ошибка при удалении файла:', error);
+			throw new InternalServerErrorException('Ошибка при удалении файла');
+		}
+    }
 }

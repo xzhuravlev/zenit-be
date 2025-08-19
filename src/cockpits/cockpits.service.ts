@@ -19,6 +19,7 @@ export class CockpitsService {
                     checklists: {
                         select: {
                             id: true,
+                            name: true,
                             progresses: {
                                 where: { userId: userId },
                                 select: {
@@ -83,6 +84,7 @@ export class CockpitsService {
                 checklists: {
                     select: {
                         id: true,
+                        name: true,
                         progresses: {
                             where: { userId: userId },
                             select: {
