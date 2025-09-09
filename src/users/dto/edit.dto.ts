@@ -17,5 +17,4 @@ export class EditUserDto {
     @IsString()
     @IsOptional()
     newPassword?: string;
-
 }
