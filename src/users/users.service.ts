@@ -37,13 +37,25 @@ export class UsersService {
         const dataToUpdate: any = {};
         if (dto.username) dataToUpdate.username = dto.username;
         if (dto.email) dataToUpdate.email = dto.email;
-        if (dto.currentPassword && dto.newPassword) {
-            const isMatch = await argon.verify(user.hash, dto.currentPassword);
-            if (!isMatch) throw new ForbiddenException('Current password incorrect');
 
-            const newHash = await argon.hash(dto.newPassword);
-            dataToUpdate.hash = newHash;
+        if (dto.newPassword) {
+            if (user.hash) {
+                if (!dto.currentPassword) throw new ForbiddenException('Current password required')
+                
+                const isMatch = await argon.verify(user.hash, dto.currentPassword);
+                if (!isMatch) throw new ForbiddenException('Current password incorrect')
+                dataToUpdate.hash = await argon.hash(dto.newPassword)
+            } else {
+                throw new ForbiddenException('Password not set. Use Google login or dedicated set-password flow.')
+            }
         }
+        // if (dto.currentPassword && dto.newPassword) {
+        //     const isMatch = await argon.verify(user.hash, dto.currentPassword);
+        //     if (!isMatch) throw new ForbiddenException('Current password incorrect');
+
+        //     const newHash = await argon.hash(dto.newPassword);
+        //     dataToUpdate.hash = newHash;
+        // }
 
         return this.database.user.update({
             where: { id: userId },

@@ -5,9 +5,13 @@ import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import * as argon from 'argon2'
+import { OAuth2Client } from 'google-auth-library';
 
 @Injectable()
 export class AuthService {
+
+    private googleClient = new OAuth2Client(this.config.get<string>('GOOGLE_CLIENT_ID'));
+
     constructor(private database: DatabaseService, private config: ConfigService, private jwtService: JwtService) { }
 
     async signUp(dto: SignUpDto): Promise<any> {
@@ -55,10 +59,73 @@ export class AuthService {
             where: { email: dto.email },
         });
         if (!user) throw new ForbiddenException('Credentials incorrect')
+        if (!user.hash) throw new ForbiddenException('Password not set. Sign in with Google or set a password first.');
 
         const passwordsMatches = await argon.verify(user.hash, dto.password);
         if (!passwordsMatches) throw new ForbiddenException('Credentials incorrect');
 
+        const tokens = await this.generateTokens(user.id, user.email);
+        await this.saveRefreshToken(user.id, tokens.refresh_token);
+        return { access_token: tokens.access_token, refresh_token: tokens.refresh_token };
+    }
+
+    async signInWithGoogle(idToken: string): Promise<{ access_token: string; refresh_token: string }> {
+        const ticket = await this.googleClient.verifyIdToken({
+            idToken,
+            audience: this.config.get<string>('GOOGLE_CLIENT_ID'),
+        });
+        const payload = ticket.getPayload();
+        if (!payload) throw new ForbiddenException('Invalid Google token')
+
+        const sub = payload.sub;
+        const email = payload.email;
+        const emailVerified = payload.email_verified;
+        const name = payload.name ?? '';
+        const picture = payload.picture ?? '';
+        if (!email || !emailVerified) throw new ForbiddenException('Google email is missing or not verified');
+
+        // find user, if he is already in our database
+        let user = await this.database.user.findFirst({
+            where: {
+                OR: [{ providerId: sub }, { email }],
+            },
+        });
+
+        // create new user, if he is not in database
+        if (!user) {
+            const base = (email.split('@')[0] || 'user').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) || 'user';
+            let candidate = base;
+            let i = 0;
+            while (await this.database.user.findUnique({ where: {username: candidate}})) {
+                i += 1;
+                candidate = `${base}_${i}`;
+            }
+
+            user = await this.database.user.create({
+                data: {
+                    email,
+                    username: candidate,
+                    provider: 'GOOGLE',
+                    providerId: sub,
+                    avatar: picture,
+                    verified: true,
+                },
+            });
+        } else {
+            if (user.providerId !== sub || user.avatar !== picture || !user.verified || user.provider !== 'GOOGLE') {
+                user = await this.database.user.update({
+                    where: { id: user.id },
+                    data: {
+                        provider: 'GOOGLE',
+                        providerId: sub,
+                        avatar: picture,
+                        verified: true,
+                    },
+                });
+            }
+        }
+
+        // выпускаем токены и сохраняем refresh (как в обычном логине)
         const tokens = await this.generateTokens(user.id, user.email);
         await this.saveRefreshToken(user.id, tokens.refresh_token);
         return { access_token: tokens.access_token, refresh_token: tokens.refresh_token };

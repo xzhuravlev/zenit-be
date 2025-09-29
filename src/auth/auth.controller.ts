@@ -40,6 +40,22 @@ export class AuthController {
         return { access_token };
     }
 
+    @Post('google')
+    @HttpCode(HttpStatus.OK)
+    async googleLogin(
+        @Body('idToken') idToken: string,
+        @Res({ passthrough: true }) res: Response,
+    ) {
+        const { access_token, refresh_token } = await this.authService.signInWithGoogle(idToken);
+        res.cookie('refresh_token', refresh_token, {
+            httpOnly: true,
+            secure: this.config.get('NODE_ENV') === 'production', // включи только на HTTPS
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+        return { access_token };
+    }
+
     @Post('login')
     @HttpCode(HttpStatus.OK)
     async signIn(

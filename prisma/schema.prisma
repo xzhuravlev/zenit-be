@@ -17,14 +17,22 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
+enum AuthProvider {
+    LOCAL
+    GOOGLE
+}
+
 model User {
     id           Int      @id @default(autoincrement())
     username     String   @unique
     email        String   @unique
-    hash         String
+    hash         String?
     role         UserRole @default(USER)
     verified     Boolean  @default(false)
     refreshToken String?
+    provider     AuthProvider   @default(LOCAL)
+    providerId   String?        @unique // google sub
+    avatar       String?
     createdAt    DateTime @default(now())
     updatedAt    DateTime @updatedAt
 
