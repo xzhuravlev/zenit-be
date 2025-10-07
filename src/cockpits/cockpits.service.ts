@@ -6,10 +6,10 @@ import { DatabaseService } from 'src/database/database.service';
 export class CockpitsService {
     constructor(private database: DatabaseService) { }
 
-    findAll(filterDto: CockpitFilterDto, userId: number) {
+    async findAll(filterDto: CockpitFilterDto, userId: number) {
         if (!Object.keys(filterDto).length) {
             // no filter
-            return this.database.cockpit.findMany({
+            const cockpits = await this.database.cockpit.findMany({
                 include: {
                     _count: {
                         select: {
@@ -17,6 +17,10 @@ export class CockpitsService {
                         },
                     },
                     favoritedBy: { where: { id: userId }, select: { id: true } },
+                    purchases: {
+                        where: { userId, status: 'SUCCEEDED' },
+                        select: { id: true }
+                    },
                     checklists: {
                         select: {
                             id: true,
@@ -38,6 +42,11 @@ export class CockpitsService {
                     media: true,
                 },
             });
+
+            return cockpits.map(c => ({
+                ...c,
+                purchasedByMe: c.purchases.length > 0,
+            }));
         }
 
         // filter
@@ -73,7 +82,7 @@ export class CockpitsService {
             sortOrder = { createdAt: 'desc' };
         }
 
-        return this.database.cockpit.findMany({
+        const cockpits = await this.database.cockpit.findMany({
             where,
             orderBy: sortOrder,
             include: {
@@ -83,6 +92,10 @@ export class CockpitsService {
                     },
                 },
                 favoritedBy: { where: { id: userId }, select: { id: true } },
+                purchases: {
+                    where: { userId, status: 'SUCCEEDED' },
+                    select: { id: true }
+                },
                 checklists: {
                     select: {
                         id: true,
@@ -104,6 +117,11 @@ export class CockpitsService {
                 media: true,
             },
         });
+
+        return cockpits.map(c => ({
+            ...c,
+            purchasedByMe: c.purchases.length > 0,
+        }));
     }
 
     async findOneById(cockpitId: number, userId: number) {
