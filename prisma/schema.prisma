@@ -40,6 +40,7 @@ model User {
     createdCockpits      Cockpit[]
     favoriteCockpits     Cockpit[]           @relation("FavoriteCockpits")
     checklistsProgresses ChecklistProgress[]
+    purchases            Purchase[]
 
     @@map("users")
 }
@@ -56,6 +57,9 @@ model Cockpit {
     manufacturer String?
     model        String?
     type         String?
+    isForSale    Boolean   @default(false)
+    priceCents   Int?      // цена в центах/копейках
+    currency     String?   // "USD","EUR","CZK" и т.п.
     createdAt    DateTime @default(now())
     updatedAt    DateTime @updatedAt
 
@@ -66,8 +70,35 @@ model Cockpit {
     instruments Instrument[]
     checklists  Checklist[]
     media       Media[]
+    purchases   Purchase[]
 
     @@map("cockpits")
+}
+
+enum PurchaseStatus {
+    REQUIRES_PAYMENT
+    SUCCEEDED
+    CANCELED
+    REFUNDED
+}
+
+model Purchase {
+    id           Int           @id @default(autoincrement())
+    userId       Int
+    cockpitId    Int
+    amountCents  Int
+    currency     String
+    status       PurchaseStatus @default(REQUIRES_PAYMENT)
+    provider     String         // "stripe"
+    providerRef  String?        // id в Stripe
+    createdAt    DateTime       @default(now())
+    updatedAt    DateTime       @updatedAt
+
+    user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    cockpit Cockpit @relation(fields: [cockpitId], references: [id], onDelete: Cascade)
+
+    @@unique([userId, cockpitId])
+    @@map("purchases")
 }
 
 model Instrument {

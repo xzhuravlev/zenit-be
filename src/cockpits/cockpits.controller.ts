@@ -19,9 +19,10 @@ export class CockpitsController {
 
     @Get(':id')
     findOne(
-        @Param('id', ParseIntPipe) cockpitId: number
+        @Param('id', ParseIntPipe) cockpitId: number,
+        @GetUser('id') userId: number
     ) {
-        return this.cockpitsService.findOneById(cockpitId);
+        return this.cockpitsService.findOneById(cockpitId, userId);
     }
 
     @Post()

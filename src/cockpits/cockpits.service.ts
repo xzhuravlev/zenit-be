@@ -106,8 +106,8 @@ export class CockpitsService {
         });
     }
 
-    findOneById(cockpitId: number) {
-        return this.database.cockpit.findFirst({
+    async findOneById(cockpitId: number, userId: number) {
+        const cockpit = await this.database.cockpit.findFirst({
             where: { id: cockpitId },
             include: {
                 creator: {
@@ -138,6 +138,23 @@ export class CockpitsService {
                 media: true,
             },
         });
+
+        if (!cockpit) throw new NotFoundException('Cockpit not found');
+
+        if (cockpit.isForSale) {
+            const isOwner = cockpit.creatorId === userId;
+            const hasPurchase = await this.database.purchase.findFirst({
+                where: { userId, cockpitId, status: 'SUCCEEDED' },
+                select: { id: true },
+            });
+
+            if (!isOwner && !hasPurchase) {
+                // можно вернуть превью вместо 403 — по желанию
+                throw new ForbiddenException('Purchase required');
+            }
+        }
+
+        return cockpit;
     }
 
     async create(dto: CockpitCreateDto, userId: number) {
@@ -346,34 +363,34 @@ export class CockpitsService {
     async toggleFavorite(cockpitId: number, userId: number) {
         // Проверяем, что кокпит существует
         const exists = await this.database.cockpit.findUnique({
-          where: { id: cockpitId },
-          select: { id: true },
+            where: { id: cockpitId },
+            select: { id: true },
         });
         if (!exists) throw new NotFoundException('Cockpit not found');
-    
+
         // Есть ли уже лайк от этого пользователя?
         const already = await this.database.cockpit.count({
-          where: { id: cockpitId, favoritedBy: { some: { id: userId } } },
+            where: { id: cockpitId, favoritedBy: { some: { id: userId } } },
         });
-    
+
         // Переключаем связь connect/disconnect
         const updated = await this.database.cockpit.update({
-          where: { id: cockpitId },
-          data: {
-            favoritedBy: already
-              ? { disconnect: { id: userId } }
-              : { connect: { id: userId } },
-          },
-          include: {
-            _count: { select: { favoritedBy: true } },
-          },
+            where: { id: cockpitId },
+            data: {
+                favoritedBy: already
+                    ? { disconnect: { id: userId } }
+                    : { connect: { id: userId } },
+            },
+            include: {
+                _count: { select: { favoritedBy: true } },
+            },
         });
-    
+
         return {
-          cockpitId,
-          liked: !already,                          // текущее состояние ПОСЛЕ операции
-          favoritesCount: updated._count.favoritedBy,
+            cockpitId,
+            liked: !already,                          // текущее состояние ПОСЛЕ операции
+            favoritesCount: updated._count.favoritedBy,
         };
-      }
+    }
 
 }
