@@ -146,7 +146,8 @@ export class AuthService {
                 username: true,
                 email: true,
                 role: true,
-                verified: true
+                verified: true,
+                avatar: true,
             }
         })
         if (!user)

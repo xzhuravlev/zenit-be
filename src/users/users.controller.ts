@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, UseGuards, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, UseGuards, ValidationPipe } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AdminGuard, JwtGuard, ModeratorGuard } from 'src/auth/guard';
 import { EditUserDto } from './dto';
@@ -23,7 +23,7 @@ export class UsersController {
 
     @Patch('verify/:userId')
     @UseGuards(AdminGuard)
-    verifyUser(@Param('userId') userId: number){
-        return this.usersService.verifyUser(Number(userId));
+    verifyUser(@Param('userId', ParseIntPipe) userId: number){
+        return this.usersService.verifyUser(userId);
     }
 }

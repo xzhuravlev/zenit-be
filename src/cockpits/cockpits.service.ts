@@ -246,12 +246,16 @@ export class CockpitsService {
     }
 
     async update(cockpitId: number, dto: CockpitUpdateDto, userId: number) {
+        const currentUser = await this.database.user.findUnique({
+            where: { id: userId },
+        })
+
         const cockpit = await this.database.cockpit.findUnique({
             where: { id: cockpitId },
             include: { instruments: true },
         });
 
-        if (!cockpit || cockpit.creatorId !== userId)
+        if (!cockpit || (cockpit.creatorId !== userId && currentUser?.role === 'USER'))
             throw new ForbiddenException('Access to resources denied')
 
         // if we got new media => delete old
