@@ -1,0 +1,15 @@
+{
+    "moduleFileExtensions": ["js", "json", "ts"],
+    "rootDir": ".",
+    "testEnvironment": "node",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": { "^.+\\.(t|j)s$": "ts-jest" },
+    "moduleNameMapper": { "^src/(.*)$": "<rootDir>/src/$1" },
+    "collectCoverage": true,
+    "coverageDirectory": "./coverage-unit",
+    "coveragePathIgnorePatterns": ["/node_modules/", "/test/"],
+    "coverageThreshold": {
+        "global": { "branches": 40, "functions": 80, "lines": 60, "statements": 80 }
+    }
+}
+  
