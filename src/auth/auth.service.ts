@@ -6,6 +6,7 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import * as argon from 'argon2'
 import { OAuth2Client } from 'google-auth-library';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -18,11 +19,14 @@ export class AuthService {
         const hash = await argon.hash(dto.password);
 
         try {
+            const usersCount = await this.database.user.count()
+            const role: UserRole = usersCount === 0 ? UserRole.ADMIN : UserRole.USER;
             const user = await this.database.user.create({
                 data: {
                     email: dto.email,
                     username: dto.username,
                     hash,
+                    role: role,
                 },
                 select: {
                     id: true,
