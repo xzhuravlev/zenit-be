@@ -5,8 +5,8 @@ import { ConfigService } from '@nestjs/config';
 import type { Multer } from 'multer';
 import * as sharp from 'sharp'; // Подключаем sharp
 import { Readable } from 'stream';
-import { v4 as uuidv4 } from 'uuid';
-
+// import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 
 @Injectable()
@@ -35,7 +35,7 @@ export class S3Service {
     }
 
     async uploadPanorama(file: Multer.File) {
-        const fileKey = `panoramas/${uuidv4()}-${file.originalname}`;
+        const fileKey = `panoramas/${randomUUID()}-${file.originalname}`;
         const previewKey = fileKey.replace(/(\.[\w\d_-]+)$/i, '_preview$1'); // Добавляем _preview перед расширением
 
         // 🔹 Создаём уменьшенную версию 350x196

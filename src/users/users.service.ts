@@ -3,6 +3,7 @@ import { DatabaseService } from '../database/database.service';
 import { User } from '@prisma/client';
 import { EditUserDto } from './dto';
 import * as argon from 'argon2';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class UsersService {
@@ -56,17 +57,32 @@ export class UsersService {
         //     const newHash = await argon.hash(dto.newPassword);
         //     dataToUpdate.hash = newHash;
         // }
-
-        return this.database.user.update({
-            where: { id: userId },
-            data: dataToUpdate,
-            select: {
-                id: true,
-                username: true,
-                email: true,
-                updatedAt: true,
+        try {
+            return await this.database.user.update({
+                where: { id: userId },
+                data: dataToUpdate,
+                select: {
+                    id: true,
+                    username: true,
+                    email: true,
+                    updatedAt: true,
+                }
+            })
+        } catch (error) {
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code === 'P2002') {
+                    const target = error.meta?.target as string[];
+                    if (target)
+                        console.log(target)
+                    if (target && target.includes('email'))
+                        throw new ForbiddenException('Email is already taken');
+                    if (target && target.includes('username'))
+                        throw new ForbiddenException('Username is already taken');
+                    throw new ForbiddenException('Credentials taken');
+                }
             }
-        })
+            throw error;
+        }
     }
 
     async verifyUser(userId: number) {

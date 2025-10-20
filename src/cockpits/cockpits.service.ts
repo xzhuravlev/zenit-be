@@ -372,7 +372,12 @@ export class CockpitsService {
             },
         });
 
-        if (!cockpit || cockpit.creatorId !== userId)
+        const currentUser = await this.database.user.findUnique({
+            where: { id: userId },
+        })
+
+        // if (!cockpit || cockpit.creatorId !== userId)
+        if (!cockpit || (cockpit.creatorId !== userId && currentUser?.role === 'USER'))
             throw new ForbiddenException('Access to resources denied')
 
         return this.database.cockpit.delete({

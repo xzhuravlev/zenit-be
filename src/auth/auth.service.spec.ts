@@ -5,10 +5,12 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import * as argon2 from 'argon2';
 
 import { AuthService } from './auth.service';
+import { count } from 'console';
 
 // ---- Моки зависимостей ----
 const mockDb = () => ({
     user: {
+        count: jest.fn(),
         create: jest.fn(),
         findUnique: jest.fn(),
         update: jest.fn(),
