@@ -7,6 +7,8 @@ import * as sharp from 'sharp'; // Подключаем sharp
 import { Readable } from 'stream';
 // import { v4 as uuidv4 } from 'uuid';
 import { randomUUID } from 'crypto';
+import * as path from 'path';
+import { promises as fs } from 'fs';
 
 
 @Injectable()
@@ -15,6 +17,14 @@ export class S3Service {
     private bucketName: string;
 
     constructor(private configService: ConfigService) {
+        const isLocal = this.configService.get<string>('MEDIA_STORAGE') === 'local';
+
+        if (isLocal) {
+            // Локальный режим — ничего не валидируем и не создаём
+            // this.s3 = undefined;
+            // this.bucketName = undefined;
+            return;
+        }
         const region = this.configService.get<string>('AWS_S3_REGION');
         const accessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID');
         const secretAccessKey = this.configService.get<string>('AWS_SECRET_ACCESS_KEY');
@@ -35,6 +45,8 @@ export class S3Service {
     }
 
     async uploadPanorama(file: Multer.File) {
+        const isLocal = this.configService.get<string>('MEDIA_STORAGE') === 'local';
+        
         const fileKey = `panoramas/${randomUUID()}-${file.originalname}`;
         const previewKey = fileKey.replace(/(\.[\w\d_-]+)$/i, '_preview$1'); // Добавляем _preview перед расширением
 
@@ -42,6 +54,25 @@ export class S3Service {
         const previewBuffer = await sharp(file.buffer)
             .resize(350, 196)
             .toBuffer();
+
+        if (isLocal) {
+            const baseDir = this.configService.get<string>('LOCAL_UPLOAD_DIR', './uploads');
+            const absOriginal = path.join(baseDir, fileKey);
+            const absPreview = path.join(baseDir, previewKey);
+        
+            await fs.mkdir(path.dirname(absOriginal), { recursive: true });
+        
+            await Promise.all([
+                fs.writeFile(absOriginal, file.buffer),
+                fs.writeFile(absPreview, previewBuffer),
+            ]);
+        
+            const appUrl = this.configService.get<string>('APP_URL', 'http://localhost:3333');
+            const originalUrl = `${appUrl}/uploads/${fileKey.replace(/\\/g, '/')}`;
+            const previewUrl = `${appUrl}/uploads/${previewKey.replace(/\\/g, '/')}`;
+        
+            return { originalUrl, previewUrl };
+        }
 
         // 🔹 Загрузка оригинала
         const uploadOriginal = new Upload({
@@ -84,9 +115,24 @@ export class S3Service {
 			throw new Error('Текст не передан.');
 		}
 
+        const isLocal = this.configService.get<string>('MEDIA_STORAGE') === 'local';
+
 		const timestamp = new Date().toISOString().replace(/[:.]/g, "-"); // Генерируем временную метку
 		const safeFilename = filename ? filename.replace(/\s+/g, "_") : "text"; // Убираем пробелы в имени файла
 		const fileKey = `texts/${safeFilename}_${timestamp}.txt`; // Добавляем метку времени
+
+        if (isLocal) {
+            // ==== ЛОКАЛЬНО ====
+            const baseDir = this.configService.get<string>('LOCAL_UPLOAD_DIR', './uploads');
+            const absPath = path.join(baseDir, fileKey);
+        
+            await fs.mkdir(path.dirname(absPath), { recursive: true });
+            await fs.writeFile(absPath, text, { encoding: 'utf8' });
+        
+            const appUrl = this.configService.get<string>('APP_URL', 'http://localhost:3333');
+            // важен forward-slash
+            return `${appUrl}/uploads/${fileKey.replace(/\\/g, '/')}`;
+        }
 	
 		try {
 			const upload = new Upload({
@@ -108,6 +154,11 @@ export class S3Service {
 	}
 
     async deletePanorama(key: string) {
+        const isLocal = this.configService.get<string>('MEDIA_STORAGE') === 'local';
+        if(isLocal){
+			return { message: `The ${key} file was not deleted because LOCAL storage was configured in .env` };
+        }
+
         try {
 			const command = new DeleteObjectCommand({
 				Bucket: this.bucketName,
