@@ -18,10 +18,10 @@ $ yarn run start:dev
 
 ```bash
 # unit tests
-$ yarn run test
+$ yarn test:unit
 
 # e2e tests
-$ yarn run test:e2e
+$ yarn test:e2e
 
 # test coverage
 $ yarn run test:cov
