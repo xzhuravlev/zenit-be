@@ -4,8 +4,13 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class StripeService {
-    public stripe: Stripe;
+    public stripe: Stripe | null = null;
     constructor(private config: ConfigService) {
-        this.stripe = new Stripe(this.config.get<string>('STRIPE_SECRET_KEY')!);
-    }
+        const secretKey = this.config.get<string>('STRIPE_SECRET_KEY');
+        const isActive = this.config.get<string>('STRIPE_ACTIVE') === 'true';
+      
+        if (secretKey && isActive) {
+          this.stripe = new Stripe(secretKey);
+        }
+      }
 }

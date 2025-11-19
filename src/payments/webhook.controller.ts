@@ -16,6 +16,10 @@ export class WebhookController {
 
     @Post('stripe/webhook')
     async handle(@Req() req: Request, @Res() res: Response) {
+        if(!this.stripeSvc.stripe){
+            console.log('Stripe is not initialized. Check STRIPE_SECRET_KEY and STRIPE_ACTIVE');
+            return;
+        }
         console.log('>>> Webhook hit!'); // <-- первый маркер
 
         const sig = req.headers['stripe-signature'] as string;

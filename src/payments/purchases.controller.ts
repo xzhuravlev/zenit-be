@@ -13,6 +13,11 @@ export class PurchasesController {
     @Post('create-intent')
     @UseGuards(JwtGuard)
     async createIntent(@GetUser('id') userId: number, @Body() dto: { cockpitId: number }) {
+        if(!this.stripeSvc.stripe){
+            console.log('Stripe is not initialized. Check STRIPE_SECRET_KEY and STRIPE_ACTIVE');
+            return;
+        }
+
         const cockpit = await this.db.cockpit.findUnique({ where: { id: dto.cockpitId } });
         if (!cockpit || !cockpit.isForSale || !cockpit.priceCents || !cockpit.currency) {
             throw new BadRequestException('This cockpit is not for sale');
