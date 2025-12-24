@@ -23,7 +23,7 @@ MEDIA_STORAGE=local         # local | s3
 
 If you have Docker installed, just run:
 ```bash
-$ docker-compose up --build
+$ docker compose up --build
 ```
 
 This will bring up PostgreSQL DataBase on `localhost:5434`.
@@ -36,10 +36,10 @@ $ yarn prisma migrate dev
 Run the application in following mods:
 ```bash
 # development
-$ yarn run start
+$ yarn start
 
 # watch mode
-$ yarn run start:dev
+$ yarn start:dev
 ```
 
 NestJS backend app on `http://localhost:3333`
